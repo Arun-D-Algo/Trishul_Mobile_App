@@ -1,150 +1,171 @@
 # TRISHUL 2.0 — Codex Engineering Instructions
 
 ## Mission
-Build TRISHUL 2.0, an SIH prototype for problem statement SIH26192: an AI-assisted flash-flood risk, early-warning, offline evacuation-routing, and disaster-resilient reporting platform for hilly regions.
+Build TRISHUL 2.0 for SIH26192: an AI-assisted flash-flood risk, early-warning, evacuation-routing, and disaster-resilient reporting prototype for hilly regions.
 
-The repository is a greenfield monorepo. Build a demonstrable vertical slice first; do not over-engineer or chase production-grade hardware integrations during the 1-week prototype.
+This is a greenfield SIH prototype with two developers using separate Codex sessions. Build a reliable, demonstrable vertical slice first. Do not over-engineer.
+
+## Source of truth
+Read these before implementing substantial work:
+1. `AGENTS.md` — engineering guardrails
+2. `docs/CODEX_BUILD_PLAN.md` — execution sequence
+3. `docs/TEAM_SPLIT.md` — ownership boundaries
+4. `docs/codex-context/00_CODEX_START.md` — product master context
+5. Relevant files in `docs/codex-context/` for the subsystem being changed
+
+If the detailed context conflicts with the MVP guardrails here, prefer the simpler, testable implementation and document the decision.
+
+## Team ownership
+### Arunangshu Dasgupta — Platform / Backend / GIS
+Owns `backend/`, `scripts/`, `data/`, backend tests, API/domain contracts, risk engine, routing, adapters, and integration infrastructure.
+
+### Rutuj Runwal — Product / Frontend / Mobile
+Owns `mobile/`, `dashboard/`, frontend/mobile tests, offline UX, maps, SOS/report UX, and demo presentation polish.
+
+Do not edit the other teammate's owned area unless integration requires it. Coordinate API/schema changes through documentation and small commits.
 
 ## Non-negotiable engineering rules
 1. Inspect the repository before changing anything.
-2. Keep the app runnable after every major task.
-3. Prefer simple, deterministic implementations over speculative infrastructure.
-4. Do not claim scientific capabilities that are not implemented or validated.
-5. Never hard-code secrets. Use `.env` / platform environment variables and provide `.env.example`.
+2. Keep the application runnable after every major task.
+3. Prefer simple deterministic implementations over speculative infrastructure.
+4. Never claim scientific capabilities that are not implemented or validated.
+5. Never hard-code secrets. Use environment variables and provide `.env.example`.
 6. Never commit API keys, tokens, credentials, certificates, or private URLs.
-7. Write tests for core risk calculations, route pruning, report validation, and API contracts.
+7. Test core risk calculations, route safety/pruning, reports, and API contracts.
 8. Use typed models at API boundaries.
-9. Keep heavy GIS preprocessing offline/precomputed; do not require DEM processing at runtime.
+9. Keep heavy GIS preprocessing offline/precomputed.
 10. Demo Mode must work without internet.
-11. Treat flood-risk output as decision support, not a guaranteed prediction.
-12. Avoid adding dependencies unless they solve a concrete MVP requirement.
-13. Do not replace working code merely for stylistic reasons.
-14. Before declaring a task complete, run the relevant tests, static checks, and build checks.
-15. When a dependency cannot be reliably installed or run in the target environment, implement a clean adapter/interface and a deterministic fallback rather than blocking the entire product.
+11. Treat risk output as decision support, not a guaranteed prediction.
+12. Avoid dependencies unless they solve a concrete MVP requirement.
+13. Do not replace working code merely for style.
+14. Before declaring a task complete, run relevant tests/static/build checks.
+15. If a dependency cannot reliably run, use an adapter/interface and deterministic fallback rather than blocking the product.
+16. Do not fabricate model accuracy, sensor measurements, training results, or emergency-service endorsements.
 
 ## Product truth
-The prototype should demonstrate:
+The prototype must demonstrate:
 - rainfall-driven risk escalation
 - terrain/elevation-aware risk visualization
 - estimated hazard arrival vs evacuation time
 - dynamic safe-route recalculation when roads become unsafe
-- citizen SOS / blockage reports
+- citizen SOS/blockage reports
 - offline/demo operation
 - administrative command dashboard
 
-The following are optional adapters, not blockers:
-- real BLE mesh
-- real Android/iOS barometer background sensing
-- real bridge CCTV inference
-- real acoustic TinyML inference
-- live DEM processing
-
-For optional hardware/ML integrations, provide interfaces and simulated inputs so the end-to-end product remains demonstrable.
+Optional integrations are not blockers:
+- real BLE/Wi-Fi Direct
+- native background barometer sensing
+- bridge CCTV/YOLO
+- acoustic TinyML
+- live satellite processing
+- live DEM preprocessing
 
 ## Scientific guardrails
-Do NOT use atmospheric pressure drop as a primary flash-flood predictor. If represented in the UI, label it as an auxiliary sensor signal.
-Do NOT assert that TRISHUL universally predicts flash floods 15 minutes in advance. Use language such as "estimated hazard arrival" and "localized risk assessment".
-Do NOT invent model accuracy, training metrics, sensor performance, or emergency-service endorsements.
+Do not use atmospheric pressure drop as a primary flash-flood predictor; if shown, label it an auxiliary signal.
+Do not claim universal 15-minute flood prediction. Use language such as `localized risk assessment` and `estimated hazard arrival`.
+Do not imply simulated demo observations are live measured observations.
 
 ## Preferred architecture
-Monorepo:
-- `mobile/` — Flutter citizen application
-- `backend/` — FastAPI API and risk/routing services
-- `dashboard/` — administrative dashboard; prefer a lightweight web implementation unless an existing dashboard framework is clearly justified
-- `data/` — small demo datasets only; never commit huge raw DEM/map datasets
-- `scripts/` — preprocessing and demo-data generation
-- `docs/` — product and technical documentation
-- `tests/` — cross-component or fixture tests where appropriate
+```text
+mobile/       Flutter citizen application
+dashboard/    web command center
+backend/      FastAPI modular monolith
+data/         small deterministic demo fixtures
+scripts/      preprocessing/data-generation utilities
+tests/        cross-component tests
+docs/         product and technical context
+```
 
-Backend modules should separate:
+Backend separation:
 - API routes
-- domain models
+- Pydantic/domain models
 - risk engine
 - routing engine
-- report/SOS service
+- incident/report service
 - demo scenario service
-- data adapters
+- external data adapters
 
-Flutter should separate:
-- screens/widgets
-- state management
+Frontend separation:
+- presentation
+- state/application logic
 - API client
 - local persistence
 - map/routing presentation
-- demo mode
 - emergency/report flows
+- demo mode
 
 ## MVP priorities
-P0: end-to-end demo
+P0:
 1. FastAPI backend
-2. deterministic risk engine
-3. scenario controls
-4. safe route computation / route pruning
-5. Flutter home/risk/map/report screens
-6. admin dashboard
+2. deterministic transparent risk engine
+3. deterministic scenario controls
+4. safe route computation and pruning
+5. Flutter citizen screens
+6. command dashboard
 7. Demo Mode
-8. tests and documentation
+8. tests/documentation
 
 P1:
 - offline cache
-- local SQLite persistence
+- SQLite persistence
 - report synchronization abstraction
 - shelter management
 
 P2:
-- real BLE/Wi-Fi Direct
+- real BLE
 - acoustic model
 - YOLO bridge vision
-- native barometer integration
-- real-time external data ingestion
+- native barometer
+- live external data ingestion
+- large-scale GIS processing
 
 ## Risk engine baseline
-Inputs should support at minimum:
+Minimum inputs:
 - rainfall intensity
 - cumulative/upstream rainfall
 - terrain/slope risk
-- soil saturation or proxy
+- soil saturation/proxy
 - observed water/torrent signal
-- road/bridge blockage reports
+- blockage/incident reports
 
 Return:
-- risk score in [0, 1]
-- risk level: LOW/MODERATE/HIGH/EXTREME
-- confidence/quality metadata
+- score `[0,1]`
+- level `LOW/MODERATE/HIGH/EXTREME`
+- confidence/data-quality metadata
 - estimated hazard arrival minutes
 - estimated evacuation minutes when route/user data exists
 - recommended action
 
-Make the weighting configurable and document it. For the prototype, a transparent weighted scoring model is preferable to an untrained XGBoost model pretending to be production ML.
+For the MVP, use a transparent configurable weighted model. XGBoost may be added as a real trained model only when training data and evaluation are legitimate; never use an untrained model as decoration.
 
 ## Routing baseline
-Use a graph abstraction compatible with NetworkX/OSM-derived data. Each edge should have distance, elevation/slope metadata when available, and flood/closure status. Unsafe edges are removed or heavily penalized. Compute a route to a high-ground shelter. Precompute graph fixtures for demo use.
+Use a NetworkX-compatible graph. Edges should support distance/time, slope/elevation metadata where available, and closure/flood status. Unsafe edges are removed or strongly penalized. Route to high-ground shelters. Use small deterministic demo fixtures; do not require live OSM downloads during a demo.
 
 ## Demo Mode
-Demo Mode must provide deterministic scenarios:
-- NORMAL
-- HEAVY_RAIN
-- FLASH_FLOOD
-- ROAD_BLOCKED
-- CELLULAR_OUTAGE
+Required scenarios:
+- `NORMAL`
+- `HEAVY_RAIN`
+- `FLASH_FLOOD`
+- `ROAD_BLOCKED`
+- `CELLULAR_OUTAGE`
 
-Demo Mode must allow the stage presentation to reproduce the same results every time.
+Reset must reproduce the same results every time.
 
 ## UI direction
-Emergency-focused, modern, high contrast, clean typography, map-first. Avoid childish visuals and excessive gradients. Use clear severity colors consistently. All critical warnings must remain understandable without color alone.
+Emergency-focused, modern, high contrast, clean typography, map-first. Avoid childish visuals and excessive gradients. Severity must not be communicated by color alone.
 
 ## Git discipline
-- Make small, coherent commits.
-- Do not rewrite history.
-- Do not delete user work without explicit reason.
-- Commit messages should explain intent.
-- Keep the default branch buildable.
+- Work on feature branches.
+- Make small coherent commits.
+- Never rewrite history.
+- Never delete teammate work.
+- Keep default branch buildable.
+- Coordinate changes to shared contracts.
 
 ## Completion protocol
-After implementation:
-1. run backend tests
-2. run Flutter analyzer/tests/build checks available in the environment
-3. run dashboard checks
-4. verify Demo Mode manually or with automated tests
-5. update documentation
-6. report exactly what works, what is simulated, and any remaining limitations
+1. Run backend tests.
+2. Run mobile analyzer/tests/build checks available.
+3. Run dashboard build/checks.
+4. Verify Demo Mode.
+5. Update documentation.
+6. State exactly what works, what is simulated, and remaining limitations.
